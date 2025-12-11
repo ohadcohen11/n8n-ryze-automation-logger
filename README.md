@@ -1,247 +1,241 @@
-![Banner image](https://user-images.githubusercontent.com/10284570/173569848-c624317f-42b1-45a6-ab09-f0ea3c247648.png)
+# n8n-nodes-ryze-automation-logger
 
-# n8n-nodes-starter
+![n8n.io - Workflow Automation](https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-logo.png)
 
-This starter repository helps you build custom integrations for [n8n](https://n8n.io). It includes example nodes, credentials, the node linter, and all the tooling you need to get started.
+A custom n8n node for logging Ryze workflow execution metrics to MySQL database. This node captures execution data from Ryze Pixel Sender and stores comprehensive metrics for monitoring and analysis.
 
-## Quick Start
+## Installation
 
-> [!TIP]
-> **New to building n8n nodes?** The fastest way to get started is with `npm create @n8n/node`. This command scaffolds a complete node package for you using the [@n8n/node-cli](https://www.npmjs.com/package/@n8n/node-cli).
+### Community Nodes (Recommended)
 
-**To create a new node package from scratch:**
+1. Go to **Settings > Community Nodes** in your n8n instance
+2. Click **Install a community node**
+3. Enter `n8n-nodes-ryze-automation-logger`
+4. Click **Install**
 
-```bash
-npm create @n8n/node
-```
-
-**Already using this starter? Start developing with:**
+### Manual Installation
 
 ```bash
-npm run dev
+npm install n8n-nodes-ryze-automation-logger
 ```
-
-This starts n8n with your nodes loaded and hot reload enabled.
-
-## What's Included
-
-This starter repository includes two example nodes to learn from:
-
-- **[Example Node](nodes/Example/)** - A simple starter node that shows the basic structure with a custom `execute` method
-- **[GitHub Issues Node](nodes/GithubIssues/)** - A complete, production-ready example built using the **declarative style**:
-  - **Low-code approach** - Define operations declaratively without writing request logic
-  - Multiple resources (Issues, Comments)
-  - Multiple operations (Get, Get All, Create)
-  - Two authentication methods (OAuth2 and Personal Access Token)
-  - List search functionality for dynamic dropdowns
-  - Proper error handling and typing
-  - Ideal for HTTP API-based integrations
-
-> [!TIP]
-> The declarative/low-code style (used in GitHub Issues) is the recommended approach for building nodes that interact with HTTP APIs. It significantly reduces boilerplate code and handles requests automatically.
-
-Browse these examples to understand both approaches, then modify them or create your own.
-
-## Finding Inspiration
-
-Looking for more examples? Check out these resources:
-
-- **[npm Community Nodes](https://www.npmjs.com/search?q=keywords:n8n-community-node-package)** - Browse thousands of community-built nodes on npm using the `n8n-community-node-package` tag
-- **[n8n Built-in Nodes](https://github.com/n8n-io/n8n/tree/master/packages/nodes-base/nodes)** - Study the source code of n8n's official nodes for production-ready patterns and best practices
-- **[n8n Credentials](https://github.com/n8n-io/n8n/tree/master/packages/nodes-base/credentials)** - See how authentication is implemented for various services
-
-These are excellent resources to understand how to structure your nodes, handle different API patterns, and implement advanced features.
 
 ## Prerequisites
 
-Before you begin, install the following on your development machine:
+- n8n instance (self-hosted or cloud)
+- MySQL database (5.7+ or 8.0+)
+- Node.js v22 or higher
 
-### Required
+## Database Setup
 
-- **[Node.js](https://nodejs.org/)** (v22 or higher) and npm
-  - Linux/Mac/WSL: Install via [nvm](https://github.com/nvm-sh/nvm)
-  - Windows: Follow [Microsoft's NodeJS guide](https://learn.microsoft.com/en-us/windows/dev-environment/javascript/nodejs-on-windows)
-- **[git](https://git-scm.com/downloads)**
+Create the required table in your MySQL database:
 
-### Recommended
-
-- Follow n8n's [development environment setup guide](https://docs.n8n.io/integrations/creating-nodes/build/node-development-environment/)
-
-> [!NOTE]
-> The `@n8n/node-cli` is included as a dev dependency and will be installed automatically when you run `npm install`. The CLI includes n8n for local development, so you don't need to install n8n globally.
-
-## Getting Started with this Starter
-
-Follow these steps to create your own n8n community node package:
-
-### 1. Create Your Repository
-
-[Generate a new repository](https://github.com/n8n-io/n8n-nodes-starter/generate) from this template, then clone it:
-
-```bash
-git clone https://github.com/<your-organization>/<your-repo-name>.git
-cd <your-repo-name>
+```sql
+CREATE TABLE IF NOT EXISTS n8n_scraper_logs (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  script_id VARCHAR(50) NOT NULL,
+  execution_mode VARCHAR(20) NOT NULL,  -- 'regular' or 'monthly'
+  execution_type VARCHAR(20) NOT NULL,  -- 'manual' or 'scheduled'
+  workflow_name VARCHAR(255) NOT NULL,
+  status VARCHAR(20) NOT NULL,          -- 'success' or 'error'
+  items_processed INT NOT NULL DEFAULT 0,
+  pixel_new INT NOT NULL DEFAULT 0,
+  pixel_duplicates INT NOT NULL DEFAULT 0,
+  pixel_updated INT NOT NULL DEFAULT 0,
+  event_summary JSON,                   -- {"lead": 1, "sale": 5}
+  full_details JSON,                    -- Complete Pixel Sender output
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_script_id (script_id),
+  INDEX idx_created_at (created_at),
+  INDEX idx_execution_type (execution_type)
+);
 ```
 
-### 2. Install Dependencies
+You can use a custom table name by changing the **Table Name** parameter in the node settings.
+
+## Configuration
+
+### 1. Add MySQL Credentials
+
+1. Go to **Credentials** in n8n
+2. Click **Add Credential**
+3. Select **MySQL**
+4. Fill in your database connection details:
+   - Host
+   - Port (default: 3306)
+   - Database name
+   - User
+   - Password
+
+### 2. Add Node to Workflow
+
+1. In your workflow, add the **Ryze Automation Logger** node after your **Ryze Pixel Sender** node
+2. Select your MySQL credentials
+3. (Optional) Change the **Table Name** (defaults to `n8n_scraper_logs`)
+
+## Usage
+
+### Workflow Pattern
+
+```
+Ryze Pixel Sender
+    ↓
+Ryze Automation Logger  ← Automatically logs metrics to MySQL
+    ↓
+(Optional: Additional nodes)
+```
+
+### What Gets Logged
+
+The node automatically extracts and logs:
+
+- **script_id** - From Pixel Sender output
+- **execution_mode** - 'regular' or 'monthly'
+- **execution_type** - Auto-detected ('manual' or 'scheduled')
+- **workflow_name** - From n8n workflow context
+- **status** - 'success' or 'error' (based on pixel failures)
+- **items_processed** - Total input items
+- **pixel_new** - New items sent to pixel
+- **pixel_duplicates** - Duplicate items skipped
+- **pixel_updated** - Updated items
+- **event_summary** - JSON of event types (e.g., `{"lead": 1, "sale": 5}`)
+- **full_details** - Complete Pixel Sender output
+
+### Example Input (from Pixel Sender)
+
+```json
+{
+  "execution": {
+    "mode": "regular",
+    "script_id": "2000",
+    "timestamp": "2025-12-11T13:32:03.613Z"
+  },
+  "summary": {
+    "total_input": 40,
+    "new_items": 1,
+    "exact_duplicates": 39,
+    "updated_items": 0,
+    "event_summary": {
+      "lead": 1
+    },
+    "pixel_success": 1,
+    "pixel_failed": 0
+  }
+}
+```
+
+### Example Output
+
+The node returns success information:
+
+```json
+{
+  "success": true,
+  "script_id": "2000",
+  "execution_type": "scheduled",
+  "workflow_name": "[2000] [API] Aircall - PartnerStack Event Tracker",
+  "status": "success",
+  "items_logged": 1
+}
+```
+
+## Features
+
+✅ **Zero Configuration** - Auto-extracts all data from Pixel Sender
+✅ **Configurable Table Name** - Use any table name you prefer
+✅ **Auto-Detection** - Automatically detects manual vs scheduled execution
+✅ **Error Resilient** - Logs errors but doesn't fail the workflow
+✅ **Pass-through** - Passes original data to next nodes on success or error
+✅ **Smart JSON Handling** - Properly handles empty event summaries and edge cases
+
+## Monitoring Queries
+
+### Recent Executions
+
+```sql
+SELECT script_id, workflow_name, execution_type,
+       items_processed, pixel_new, pixel_duplicates,
+       created_at
+FROM n8n_scraper_logs
+ORDER BY created_at DESC
+LIMIT 50;
+```
+
+### Success Rate by Script (Last 7 Days)
+
+```sql
+SELECT script_id,
+       COUNT(*) as total_executions,
+       SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) as successful,
+       ROUND(SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) as success_rate
+FROM n8n_scraper_logs
+WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+GROUP BY script_id
+ORDER BY total_executions DESC;
+```
+
+### New Items Trend (Last 30 Days)
+
+```sql
+SELECT DATE(created_at) as date,
+       script_id,
+       SUM(pixel_new) as total_new_items,
+       SUM(items_processed) as total_processed
+FROM n8n_scraper_logs
+WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+GROUP BY DATE(created_at), script_id
+ORDER BY date DESC, script_id;
+```
+
+## Development
+
+### Setup
 
 ```bash
+git clone https://github.com/ohadcohen11/n8n-ryze-automation-logger.git
+cd n8n-ryze-automation-logger
 npm install
 ```
 
-This installs all required dependencies including the `@n8n/node-cli`.
-
-### 3. Explore the Examples
-
-Browse the example nodes in [nodes/](nodes/) and [credentials/](credentials/) to understand the structure:
-
-- Start with [nodes/Example/](nodes/Example/) for a basic node
-- Study [nodes/GithubIssues/](nodes/GithubIssues/) for a real-world implementation
-
-### 4. Build Your Node
-
-Edit the example nodes to fit your use case, or create new node files by copying the structure from [nodes/Example/](nodes/Example/).
-
-> [!TIP]
-> If you want to scaffold a completely new node package, use `npm create @n8n/node` to start fresh with the CLI's interactive generator.
-
-### 5. Configure Your Package
-
-Update `package.json` with your details:
-
-- `name` - Your package name (must start with `n8n-nodes-`)
-- `author` - Your name and email
-- `repository` - Your repository URL
-- `description` - What your node does
-
-Make sure your node is registered in the `n8n.nodes` array.
-
-### 6. Develop and Test Locally
-
-Start n8n with your node loaded:
-
-```bash
-npm run dev
-```
-
-This command runs `n8n-node dev` which:
-
-- Builds your node with watch mode
-- Starts n8n with your node available
-- Automatically rebuilds when you make changes
-- Opens n8n in your browser (usually http://localhost:5678)
-
-You can now test your node in n8n workflows!
-
-> [!NOTE]
-> Learn more about CLI commands in the [@n8n/node-cli documentation](https://www.npmjs.com/package/@n8n/node-cli).
-
-### 7. Lint Your Code
-
-Check for errors:
-
-```bash
-npm run lint
-```
-
-Auto-fix issues when possible:
-
-```bash
-npm run lint:fix
-```
-
-### 8. Build for Production
-
-When ready to publish:
+### Build
 
 ```bash
 npm run build
 ```
 
-This compiles your TypeScript code to the `dist/` folder.
-
-### 9. Prepare for Publishing
-
-Before publishing:
-
-1. **Update documentation**: Replace this README with your node's documentation. Use [README_TEMPLATE.md](README_TEMPLATE.md) as a starting point.
-2. **Update the LICENSE**: Add your details to the [LICENSE](LICENSE.md) file.
-3. **Test thoroughly**: Ensure your node works in different scenarios.
-
-### 10. Publish to npm
-
-Publish your package to make it available to the n8n community:
+### Link for Local Development
 
 ```bash
-npm publish
+npm link
+cd /path/to/n8n
+npm link n8n-nodes-ryze-automation-logger
 ```
 
-Learn more about [publishing to npm](https://docs.npmjs.com/packages-and-modules/contributing-packages-to-the-registry).
+## Compatibility
 
-### 11. Submit for Verification (Optional)
-
-Get your node verified for n8n Cloud:
-
-1. Ensure your node meets the [requirements](https://docs.n8n.io/integrations/creating-nodes/deploy/submit-community-nodes/):
-   - Uses MIT license ✅ (included in this starter)
-   - No external package dependencies
-   - Follows n8n's design guidelines
-   - Passes quality and security review
-
-2. Submit through the [n8n Creator Portal](https://creators.n8n.io/nodes)
-
-**Benefits of verification:**
-
-- Available directly in n8n Cloud
-- Discoverable in the n8n nodes panel
-- Verified badge for quality assurance
-- Increased visibility in the n8n community
-
-## Available Scripts
-
-This starter includes several npm scripts to streamline development:
-
-| Script                | Description                                                      |
-| --------------------- | ---------------------------------------------------------------- |
-| `npm run dev`         | Start n8n with your node and watch for changes (runs `n8n-node dev`) |
-| `npm run build`       | Compile TypeScript to JavaScript for production (runs `n8n-node build`) |
-| `npm run build:watch` | Build in watch mode (auto-rebuild on changes)                    |
-| `npm run lint`        | Check your code for errors and style issues (runs `n8n-node lint`) |
-| `npm run lint:fix`    | Automatically fix linting issues when possible (runs `n8n-node lint --fix`) |
-| `npm run release`     | Create a new release (runs `n8n-node release`)                   |
-
-> [!TIP]
-> These scripts use the [@n8n/node-cli](https://www.npmjs.com/package/@n8n/node-cli) under the hood. You can also run CLI commands directly, e.g., `npx n8n-node dev`.
-
-## Troubleshooting
-
-### My node doesn't appear in n8n
-
-1. Make sure you ran `npm install` to install dependencies
-2. Check that your node is listed in `package.json` under `n8n.nodes`
-3. Restart the dev server with `npm run dev`
-4. Check the console for any error messages
-
-### Linting errors
-
-Run `npm run lint:fix` to automatically fix most common issues. For remaining errors, check the [n8n node development guidelines](https://docs.n8n.io/integrations/creating-nodes/).
-
-### TypeScript errors
-
-Make sure you're using Node.js v22 or higher and have run `npm install` to get all type definitions.
-
-## Resources
-
-- **[n8n Node Documentation](https://docs.n8n.io/integrations/creating-nodes/)** - Complete guide to building nodes
-- **[n8n Community Forum](https://community.n8n.io/)** - Get help and share your nodes
-- **[@n8n/node-cli Documentation](https://www.npmjs.com/package/@n8n/node-cli)** - CLI tool reference
-- **[n8n Creator Portal](https://creators.n8n.io/nodes)** - Submit your node for verification
-- **[Submit Community Nodes Guide](https://docs.n8n.io/integrations/creating-nodes/deploy/submit-community-nodes/)** - Verification requirements and process
-
-## Contributing
-
-Have suggestions for improving this starter? [Open an issue](https://github.com/n8n-io/n8n-nodes-starter/issues) or submit a pull request!
+- **n8n version**: 1.0.0+
+- **Node.js version**: 22.0+
+- **MySQL version**: 5.7+ or 8.0+
 
 ## License
 
-[MIT](https://github.com/n8n-io/n8n-nodes-starter/blob/master/LICENSE.md)
+[MIT](LICENSE.md)
+
+## Author
+
+**Ohad Cohen**
+Email: ohad.cohen@ryzebeyond.com
+GitHub: [@ohadcohen11](https://github.com/ohadcohen11)
+
+## Support
+
+- **Issues**: [GitHub Issues](https://github.com/ohadcohen11/n8n-ryze-automation-logger/issues)
+- **Repository**: [GitHub](https://github.com/ohadcohen11/n8n-ryze-automation-logger)
+
+## Version History
+
+### 1.0.0 (2025-12-11)
+- Initial release
+- Auto-detection of script_id, execution type, and workflow name
+- Configurable table name
+- Comprehensive error handling
+- MySQL integration with standard n8n credentials

@@ -130,7 +130,7 @@ export class RyzeAutomationLogger implements INodeType {
 			await connection.end();
 
 			// Return success output
-			return this.prepareOutputData([{
+			return [[{
 				json: {
 					success: true,
 					script_id: scriptId,
@@ -139,7 +139,7 @@ export class RyzeAutomationLogger implements INodeType {
 					status,
 					items_logged: 1,
 				}
-			}]);
+			}]];
 
 		} catch (error) {
 			// Log error but don't fail the workflow
@@ -148,7 +148,7 @@ export class RyzeAutomationLogger implements INodeType {
 			}
 
 			// Pass through original data on error
-			return this.prepareOutputData(items);
+			return [items];
 		}
 	}
 }
