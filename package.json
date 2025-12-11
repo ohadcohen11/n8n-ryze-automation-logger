@@ -36,7 +36,8 @@
 		],
 		"nodes": [
 			"dist/nodes/GithubIssues/GithubIssues.node.js",
-			"dist/nodes/Example/Example.node.js"
+			"dist/nodes/Example/Example.node.js",
+			"dist/nodes/RyzeAutomationLogger/RyzeAutomationLogger.node.js"
 		]
 	},
 	"devDependencies": {
@@ -45,6 +46,9 @@
 		"prettier": "3.6.2",
 		"release-it": "^19.0.4",
 		"typescript": "5.9.2"
+	},
+	"dependencies": {
+		"mysql2": "^3.6.0"
 	},
 	"peerDependencies": {
 		"n8n-workflow": "*"
