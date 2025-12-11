@@ -69,8 +69,14 @@ You can use a custom table name by changing the **Table Name** parameter in the 
 ### 2. Add Node to Workflow
 
 1. In your workflow, add the **Ryze Automation Logger** node after your **Ryze Pixel Sender** node
-2. Select your MySQL credentials
-3. (Optional) Change the **Table Name** (defaults to `n8n_scraper_logs`)
+2. Select your MySQL API credentials
+3. Configure the database settings:
+   - **Database**: MySQL database name (default: `backoffice`)
+   - **Table**: Table name for logs (default: `n8n_scraper_logs`)
+   - **Execution Mode**: Choose `Auto-Detect`, `Regular`, or `Monthly` (default: `Auto-Detect`)
+4. (Optional) Configure additional options:
+   - **Fail on Error**: Whether to fail the workflow if logging fails (default: `false`)
+   - **Verbose Logging**: Enable detailed console logging (default: `false`)
 
 ## Usage
 
@@ -125,27 +131,49 @@ The node automatically extracts and logs:
 
 ### Example Output
 
-The node returns success information:
+The node returns detailed success information:
 
 ```json
 {
   "success": true,
-  "script_id": "2000",
-  "execution_type": "scheduled",
-  "workflow_name": "[2000] [API] Aircall - PartnerStack Event Tracker",
-  "status": "success",
-  "items_logged": 1
+  "logged_at": "2025-12-11T23:00:00.000Z",
+  "script_id": 2000,
+  "log_data": {
+    "script_id": 2000,
+    "execution_mode": "regular",
+    "execution_type": "scheduled",
+    "workflow_name": "[2000] [API] Aircall - PartnerStack Event Tracker",
+    "status": "success",
+    "items_processed": 40,
+    "pixel_new": 1,
+    "pixel_duplicates": 39,
+    "pixel_updated": 0,
+    "event_summary": "{\"lead\": 1}",
+    "full_details": "[{...}]"
+  }
+}
+```
+
+On error (when Fail on Error is disabled):
+
+```json
+{
+  "success": false,
+  "error": "Error message here"
 }
 ```
 
 ## Features
 
-✅ **Zero Configuration** - Auto-extracts all data from Pixel Sender
-✅ **Configurable Table Name** - Use any table name you prefer
+✅ **Type-Safe Implementation** - Full TypeScript interfaces for data validation
+✅ **Configurable Database & Table** - Specify both database and table names
+✅ **Execution Mode Options** - Auto-detect or manually specify (Regular/Monthly)
 ✅ **Auto-Detection** - Automatically detects manual vs scheduled execution
-✅ **Error Resilient** - Logs errors but doesn't fail the workflow
-✅ **Pass-through** - Passes original data to next nodes on success or error
+✅ **Error Handling Options** - Choose to fail workflow or continue on error
+✅ **Verbose Logging** - Optional detailed console logging for debugging
+✅ **Detailed Output** - Returns complete log data for downstream processing
 ✅ **Smart JSON Handling** - Properly handles empty event summaries and edge cases
+✅ **Custom MySQL Credentials** - Uses dedicated MySqlApi credential type
 
 ## Monitoring Queries
 

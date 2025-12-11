@@ -37,6 +37,9 @@
 	],
 	"n8n": {
 		"n8nNodesApiVersion": 1,
+		"credentials": [
+			"dist/credentials/MySqlApi.credentials.js"
+		],
 		"nodes": [
 			"dist/nodes/RyzeAutomationLogger/RyzeAutomationLogger.node.js"
 		]
