@@ -8,6 +8,7 @@ import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 interface ILogData {
 	script_id: number;
+	execution_id: string;
 	execution_mode: string;
 	execution_type: string;
 	workflow_name: string;
@@ -155,9 +156,10 @@ export class RyzeAutomationLogger implements INodeType {
 			const workflowMode = this.getMode();
 			const executionType = workflowMode === 'manual' ? 'manual' : 'scheduled';
 
-			// Get workflow name
+			// Get workflow name and execution ID
 			const workflow = this.getWorkflow();
 			const workflowName = workflow.name || 'Unknown';
+			const executionId = this.getExecutionId();
 
 			// Determine status
 			const hasFailures = (summary.pixel_failed ?? 0) > 0;
@@ -166,6 +168,7 @@ export class RyzeAutomationLogger implements INodeType {
 			// Prepare log data
 			const logData: ILogData = {
 				script_id: scriptId,
+				execution_id: executionId,
 				execution_mode: mode,
 				execution_type: executionType,
 				workflow_name: workflowName,
@@ -240,15 +243,16 @@ async function insertLog(
 	try {
 		const query = `
 			INSERT INTO ${database}.${table}
-				(script_id, execution_mode, execution_type, workflow_name, status,
+				(script_id, execution_id, execution_mode, execution_type, workflow_name, status,
 				 items_processed, pixel_new, pixel_duplicates, pixel_updated,
 				 event_summary, full_details)
 			VALUES
-				(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+				(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		`;
 
 		await connection.execute(query, [
 			logData.script_id,
+			logData.execution_id,
 			logData.execution_mode,
 			logData.execution_type,
 			logData.workflow_name,
